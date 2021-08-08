@@ -1,0 +1,2 @@
+///
+lhc_cleanup();
