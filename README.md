@@ -21,4 +21,5 @@ To be written!
 
 ## Special thanks
 Martin Piecyk, for writing arguably the most famous GameMaker platforming engine that taught me the basics of pixel-perfect collision.
+
 That one l33t Russian hax0r (you know who you are), for giving technical knowledge on looping optimization per-compiler target.
