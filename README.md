@@ -1,8 +1,6 @@
 # Loj Hadron Collider
 A robust, pixel-perfect collision engine for GameMaker Studio 2.3.
 
-Like the extension? Consider [supporting me on Patreon](https://www.patreon.com/lojemiru) to help me maintain this project and develop new ones :)
-
 Need support? Want to ask a question about the extension in general, or just to pester the developer? Join the [Lojcord](https://discord.gg/HTedE6QMKY), or open an issue.
 
 ## Why build a custom collision engine?
