@@ -360,6 +360,13 @@ function lhc_collision_vertical() {
 ///@func							lhc_behavior_push();
 ///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge.
 function lhc_behavior_push() {
+	lhc_behavior_push_horizontal();
+	lhc_behavior_push_vertical();
+}
+
+///@func							lhc_behavior_push_horizontal();
+///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge on the horizontal axis only.
+function lhc_behavior_push_horizontal() {
 	var col = lhc_colliding();
 	
 	if (lhc_collision_right()) {
@@ -368,7 +375,14 @@ function lhc_behavior_push() {
 	else if (lhc_collision_left()) {
 		lhc_colliding().x = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_xVel;
 	}
-	else if (lhc_collision_down()) {
+}
+
+///@func							lhc_behavior_push_vertical();
+///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge on the vertical axis only.
+function lhc_behavior_push_vertical() {
+	var col = lhc_colliding();
+	
+	if (lhc_collision_down()) {
 		lhc_colliding().y = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_yVel;
 	}
 	else {
