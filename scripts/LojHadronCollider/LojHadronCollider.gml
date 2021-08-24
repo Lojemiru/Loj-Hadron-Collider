@@ -363,8 +363,7 @@ function lhc_behavior_push() {
 	var col = lhc_colliding();
 	
 	if (lhc_collision_right()) {
-		//var objWidth = (sprite_get_width(col.sprite_index) - sprite_get_xoffset(lhc_colliding().sprite_index)) * lhc_colliding().image_xscale;
-		lhc_colliding().x = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_xVel; //lhc_collision_right() ? bbox_right + (col.sprite_xoffset * col.image_xscale) + 2 : bbox_left - ((col.sprite_width) * col.image_xscale) - 1;
+		lhc_colliding().x = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_xVel;
 	}
 	else if (lhc_collision_left()) {
 		lhc_colliding().x = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_xVel;
