@@ -26,6 +26,9 @@ function lhc_init() {
 	__lhc_list = ds_list_create();
 	__lhc_xCurrent = x;
 	__lhc_yCurrent = y;
+	// These two are used ONLY for behavior functions where we can't directly reference the input xVel/yVel
+	__lhc_xVel = 0;
+	__lhc_yVel = 0;
 }
 
 ///@func							lhc_cleanup();
@@ -165,7 +168,10 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_yVelSub = frac(_yVel);
 	_xVel -= __lhc_xVelSub;
 	_yVel -= __lhc_yVelSub;
-		
+	
+	__lhc_xVel = _xVel;
+	__lhc_yVel = _yVel;
+	
 	var xS = sign(_xVel),
 		yS = sign(_yVel);
 		
@@ -206,7 +212,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 					xTarg = round(_xStart + xVec * i);
 					
 					__lhc_collisionDir = xRef[xS + 1];
-					 __lhc_check_substep(xTarg, __lhc_yCurrent, hitList, hitInd, __lhc_flagsX);
+					__lhc_check_substep(xTarg, __lhc_yCurrent, hitList, hitInd, __lhc_flagsX);
 					
 					__lhc_xCurrent += xVec * __lhc_continueX;
 				}
@@ -238,6 +244,8 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
 	__lhc_continueX = true;
 	__lhc_continueY = true;
+	__lhc_xVel = 0;
+	__lhc_yVel = 0;
 }
 
 ///@func							lhc_colliding();
@@ -347,4 +355,24 @@ function lhc_collision_horizontal() {
 ///@desc							Collision event-exclusive function. Returns whether or not the current collision is occuring on the top or bottom of this instance.
 function lhc_collision_vertical() {
 	return (lhc_collision_down() || lhc_collision_up());
+}
+
+///@func							lhc_behavior_push();
+///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge.
+function lhc_behavior_push() {
+	var col = lhc_colliding();
+	
+	if (lhc_collision_right()) {
+		//var objWidth = (sprite_get_width(col.sprite_index) - sprite_get_xoffset(lhc_colliding().sprite_index)) * lhc_colliding().image_xscale;
+		lhc_colliding().x = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_xVel; //lhc_collision_right() ? bbox_right + (col.sprite_xoffset * col.image_xscale) + 2 : bbox_left - ((col.sprite_width) * col.image_xscale) - 1;
+	}
+	else if (lhc_collision_left()) {
+		lhc_colliding().x = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_xVel;
+	}
+	else if (lhc_collision_down()) {
+		lhc_colliding().y = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_yVel;
+	}
+	else {
+		lhc_colliding().y = bbox_top - (col.bbox_bottom - col.y) - 1 + __lhc_yVel;
+	}
 }
