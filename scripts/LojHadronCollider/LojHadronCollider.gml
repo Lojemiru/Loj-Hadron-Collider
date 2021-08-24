@@ -102,7 +102,7 @@ function __lhc_reduce_collision_list(list, count) {
 		repeat (__lhc_objLen) {
 			// If not collided already and object index matches...
 			objRef = list[| i].object_index;
-			if (objRef == __lhc_objects[j]) {
+			if (object_is_ancestor(objRef, __lhc_objects[j]) || objRef == __lhc_objects[j]) {
 				cancel = false;
 				k = 0;
 				repeat (hitInd) {
@@ -113,7 +113,7 @@ function __lhc_reduce_collision_list(list, count) {
 					++k;
 				}
 				if (!cancel) {
-					hitList[hitInd++] = objRef;
+					hitList[hitInd++] = __lhc_objects[j];
 				}
 				break;
 			}
