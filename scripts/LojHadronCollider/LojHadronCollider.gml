@@ -1,3 +1,13 @@
+#macro __LHC_VERSION "1.1.0"
+
+show_debug_message(@"
+///----------------------------------------------------------------------------------------------------------\\\
+     This project is using the Loj Hadron Collider v" + __LHC_VERSION + @", created by Lojemiru.
+	 The LHC is released under the MIT license; please ensure that you have
+	 reviewed and followed the terms of the license before releasing this project.
+\\\----------------------------------------------------------------------------------------------------------///
+");
+
 enum __lhc_CollisionDirection {
 	NONE,
 	RIGHT,
