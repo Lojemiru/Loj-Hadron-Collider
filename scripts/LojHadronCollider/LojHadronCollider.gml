@@ -197,13 +197,16 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 			__lhc_xCurrent = x;
 			__lhc_yCurrent = y;
 			
+			__lhc_continueX = xVec != 0;
+			__lhc_continueY = yVec != 0;
+			
 			var i = 1;
 			repeat (dist + 1) {
 				if (__lhc_continueX) {
 					xTarg = round(_xStart + xVec * i);
 					
 					__lhc_collisionDir = xRef[xS + 1];
-					__lhc_continueX = __lhc_check_substep(xTarg, __lhc_yCurrent, hitList, hitInd, __lhc_flagsX);
+					 __lhc_check_substep(xTarg, __lhc_yCurrent, hitList, hitInd, __lhc_flagsX);
 					
 					__lhc_xCurrent += xVec * __lhc_continueX;
 				}
@@ -212,7 +215,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 					yTarg = round(_yStart + yVec * i);
 					
 					__lhc_collisionDir = yRef[yS + 1];
-					__lhc_continueY = __lhc_check_substep(__lhc_xCurrent, yTarg, hitList, hitInd, __lhc_flagsY);
+					__lhc_check_substep(__lhc_xCurrent, yTarg, hitList, hitInd, __lhc_flagsY);
 					
 					__lhc_yCurrent += yVec * __lhc_continueY;
 				}
