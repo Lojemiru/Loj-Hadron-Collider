@@ -30,8 +30,6 @@ function lhc_init() {
 	__lhc_continueX = true;
 	__lhc_continueY = true;
 	__lhc_objects = array_create(0);
-	__lhc_flagsX = array_create(0);
-	__lhc_flagsY = array_create(0);
 	__lhc_objLen = 0;
 	__lhc_list = ds_list_create();
 	__lhc_xCurrent = x;
@@ -53,9 +51,7 @@ function lhc_cleanup() {
 ///@param function					The function to run on collision.
 function lhc_add(_object, _function) {
     variable_instance_set(id, "__lhc_event_" + object_get_name(_object), _function);
-	__lhc_objects[__lhc_objLen] = _object;
-	__lhc_flagsY[__lhc_objLen] = false;
-	__lhc_flagsX[__lhc_objLen++] = false;
+	__lhc_objects[__lhc_objLen++] = _object;
 }
 
 ///@func							lhc_remove(object);
@@ -84,8 +80,6 @@ function lhc_remove(_object) {
 	
 	// Reset iterables
 	__lhc_objects = newObjects;
-	__lhc_flagsY = array_create(j, false);
-	__lhc_flagsX = array_create(j, false);
 	__lhc_objLen = array_length(__lhc_objects);
 }
 
@@ -100,61 +94,36 @@ function lhc_replace(_object, _function) {
 	variable_instance_set(id, "__lhc_event_" + object_get_name(_object), _function);
 }
 
-function __lhc_reduce_collision_list(list, count) {
-	var hitInd = 0,
-		hitList = [],
-		i = 0,
-		j,
-		k,
-		cancel,
-		objRef;
-	// Scan through list
-	repeat (count) {
-		// Scan through object targets
+function __lhc_collision_found() {
+	var i = 0,
+		j;
+	repeat (ds_list_size(__lhc_list)) {
 		j = 0;
 		repeat (__lhc_objLen) {
-			// If not collided already and object index matches...
-			objRef = list[| i].object_index;
-			if (object_is_ancestor(objRef, __lhc_objects[j]) || objRef == __lhc_objects[j]) {
-				cancel = false;
-				k = 0;
-				repeat (hitInd) {
-					if (hitList[k] == __lhc_objects[j]) {
-						cancel = true;
-						break;
-					}
-					++k;
-				}
-				if (!cancel) {
-					hitList[hitInd++] = __lhc_objects[j];
-				}
-				break;
+			if (__lhc_list[| i].object_index == __lhc_objects[j] || object_is_ancestor(__lhc_list[| i].object_index, __lhc_objects[j])) {
+				return true;
 			}
 			++j;
 		}
 		++i;
 	}
-	
-	return hitList;
+	return false;
 }
 
-function __lhc_check_substep(_x, _y, _hitList, _hitInd, _flags) {
+function __lhc_check_substep(_x, _y) {
 	var notCollided = true,
 		i = 0,
 		col;
 		
-	repeat (_hitInd) {
-		if (!_flags[i]) {
-			col = instance_place(_x, _y, _hitList[i]);
+	repeat (array_length(__lhc_objects)) {
+			col = instance_place(_x, _y, __lhc_objects[i]);
 			
 			if (col != noone) {
 				__lhc_colliding = col;
-				variable_instance_get(id, "__lhc_event_" + object_get_name(_hitList[i]))();
-				_flags[i] = true;
+				variable_instance_get(id, "__lhc_event_" + object_get_name(__lhc_objects[i]))();
 				__lhc_colliding = noone;
 				notCollided = false;
 			}
-		}
 		++i;
 	}
 	
@@ -195,10 +164,9 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	}
 	
 	if (count != 0) {
-		var hitList = __lhc_reduce_collision_list(__lhc_list, count),
-			hitInd = array_length(hitList);
+		var hitList = __lhc_collision_found();
 			
-		if (hitInd > 0) {
+		if (hitList) {
 			var _xStart = x,
 				_yStart = y,
 				dist = point_distance(_xStart, _yStart, _xStart + _xVel, _yStart + _yVel),
@@ -222,7 +190,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 					xTarg = round(_xStart + xVec * i);
 					
 					__lhc_collisionDir = xRef[xS + 1];
-					__lhc_check_substep(xTarg, __lhc_yCurrent, hitList, hitInd, __lhc_flagsX);
+					__lhc_check_substep(xTarg, __lhc_yCurrent);
 					
 					__lhc_xCurrent += xVec * __lhc_continueX;
 				}
@@ -231,7 +199,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 					yTarg = round(_yStart + yVec * i);
 					
 					__lhc_collisionDir = yRef[yS + 1];
-					__lhc_check_substep(__lhc_xCurrent, yTarg, hitList, hitInd, __lhc_flagsY);
+					__lhc_check_substep(__lhc_xCurrent, yTarg);
 					
 					__lhc_yCurrent += yVec * __lhc_continueY;
 				}
@@ -249,8 +217,6 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 
 	ds_list_clear(__lhc_list);
 	
-	__lhc_flagsX = array_create(__lhc_objLen, false);
-	__lhc_flagsY = array_create(__lhc_objLen, false);
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
 	__lhc_continueX = true;
 	__lhc_continueY = true;
@@ -377,25 +343,51 @@ function lhc_behavior_push() {
 ///@func							lhc_behavior_push_horizontal();
 ///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge on the horizontal axis only.
 function lhc_behavior_push_horizontal() {
-	var col = lhc_colliding();
+	if (!lhc_collision_horizontal()) return;
+	
+	var col = lhc_colliding(),
+		targX;
 	
 	if (lhc_collision_right()) {
-		col.x = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_xVel;
+		targX = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_xVel;
 	}
-	else if (lhc_collision_left()) {
-		col.x = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_xVel;
+	else {
+		targX = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_xVel;
+	}
+	
+	with (col) {
+		lhc_move(targX - x, 0);
 	}
 }
 
 ///@func							lhc_behavior_push_vertical();
 ///@desc							Collision behavior function. Pushes the colliding instance to the appropriate bounding box edge on the vertical axis only.
 function lhc_behavior_push_vertical() {
-	var col = lhc_colliding();
+	if (!lhc_collision_vertical()) return;
+	
+	var col = lhc_colliding(),
+		targY;
 	
 	if (lhc_collision_down()) {
-		col.y = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_yVel;
+		targY = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_yVel;
 	}
 	else {
-		col.y = bbox_top - (col.bbox_bottom - col.y) - 1 + __lhc_yVel;
+		targY = bbox_top - (col.bbox_bottom - col.y) - 1 + __lhc_yVel;
+	}
+	
+	with (col) {
+		lhc_move(0, targY - y);
+	}
+}
+
+///@func							lhc_behavior_stop_on_axis();
+///@desc							Collision behavior function. Stops calling instance on the appropriate axis. Does NOT manage x/y velocity variables.
+function lhc_behavior_stop_on_axis() {
+	if (lhc_collision_horizontal()) {
+		lhc_stop_x();
+	}
+	
+	if (lhc_collision_vertical()) {
+		lhc_stop_y();
 	}
 }
