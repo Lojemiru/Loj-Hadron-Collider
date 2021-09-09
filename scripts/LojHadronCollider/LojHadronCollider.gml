@@ -1,4 +1,4 @@
-#macro __LHC_VERSION "1.0.0"
+#macro __LHC_VERSION "1.0.1"
 
 show_debug_message(@"
 ///----------------------------------------------------------------------------------------------------------\\\
@@ -39,11 +39,13 @@ function lhc_init() {
 	__lhc_list = ds_list_create();
 	// These two are used ONLY for behavior functions where we can't directly reference the input xVel/yVel
 	__lhc_axisVel = array_create(__lhc_Axis.LENGTH, 0);
+	__lhc_active = true;
 }
 
 ///@func							lhc_cleanup();
 ///@desc							Cleanup event - MUST BE RUN TO PREVENT MEMORY LEAKS.
 function lhc_cleanup() {
+	__lhc_active = false;
 	ds_list_destroy(__lhc_list);
 }
 
@@ -138,7 +140,7 @@ function __lhc_check_substep(_axis, _xS, _yS) {
 ///@param [line]					Whether or not to use a single raycast for the initial collision check. Fast, but only accurate for a single-pixel hitbox.
 ///@param [precise]					Whether or not to use precise hitboxes for the initial collision check.
 function lhc_move(_x, _y, _line = false, _prec = false) {
-	if (_x == 0 && _y == 0) return; // No need to process anything if we aren't moving.
+	if (!__lhc_active || (_x == 0 && _y == 0)) return; // No need to process anything if we aren't moving.
 	
 	// Subpixel buffering
 	__lhc_axisVel[__lhc_Axis.X] = _x + __lhc_xVelSub;
@@ -232,7 +234,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	}
 	
 	// Prep list for next set of collision detections.
-	ds_list_clear(__lhc_list);
+	if (__lhc_active) ds_list_clear(__lhc_list);
 	
 	// Reset general collision step parameters.
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
