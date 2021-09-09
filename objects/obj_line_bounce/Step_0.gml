@@ -1,5 +1,5 @@
 ///
-lhc_move(xVel, yVel);
+lhc_move(xVel, yVel, true);
 
 if (death >= 0) death--;
 else instance_destroy();

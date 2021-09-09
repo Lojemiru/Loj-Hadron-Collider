@@ -13,7 +13,7 @@ points = array_create(0);
 points[0] = new vec2(x, y);
 
 
-lhc_add(obj_solid, function() {
+lhc_add("ISolid", function() {
 	lhc_stop();
 	if (xVel != 0 && lhc_collision_horizontal()) {
 		xVel *= -1;

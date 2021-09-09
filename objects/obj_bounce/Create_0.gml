@@ -20,8 +20,8 @@ bounce = function() {
 	glow = 10;
 }
 
+lhc_interface_inherit("ISolid");
+
 lhc_init();
 
-lhc_add(obj_solid, bounce);
-
-lhc_add(obj_bounce, bounce);
+lhc_add("ISolid", bounce);
