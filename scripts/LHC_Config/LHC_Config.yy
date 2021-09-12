@@ -2,11 +2,11 @@
   "isDnD": false,
   "isCompatibility": false,
   "parent": {
-    "name": "Extensions",
-    "path": "folders/Extensions.yy",
+    "name": "Loj Hadron Collider",
+    "path": "folders/Extensions/Loj Hadron Collider.yy",
   },
   "resourceVersion": "1.0",
-  "name": "LojHadronCollider",
+  "name": "LHC_Config",
   "tags": [],
   "resourceType": "GMScript",
 }

@@ -1,2 +1,2 @@
 ///
-lhc_interface_inherit("ISolid");
+lhc_inherit("ISolid");

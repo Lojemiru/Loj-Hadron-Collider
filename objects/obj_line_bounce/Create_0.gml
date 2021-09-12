@@ -1,5 +1,5 @@
 ///
-lhc_init();
+lhc_activate();
 
 function vec2(_x, _y) constructor {
 	x = _x;

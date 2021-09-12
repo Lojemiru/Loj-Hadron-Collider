@@ -2,8 +2,10 @@
   "resources": [
     {"id":{"name":"Sprite1","path":"sprites/Sprite1/Sprite1.yy",},"order":0,},
     {"id":{"name":"obj_line_bounce","path":"objects/obj_line_bounce/obj_line_bounce.yy",},"order":11,},
+    {"id":{"name":"LHC_Config","path":"scripts/LHC_Config/LHC_Config.yy",},"order":2,},
     {"id":{"name":"Sprite5","path":"sprites/Sprite5/Sprite5.yy",},"order":4,},
-    {"id":{"name":"LojHadronCollider","path":"scripts/LojHadronCollider/LojHadronCollider.yy",},"order":0,},
+    {"id":{"name":"__LHC_Internals","path":"scripts/__LHC_Internals/__LHC_Internals.yy",},"order":0,},
+    {"id":{"name":"scr_example_setup","path":"scripts/scr_example_setup/scr_example_setup.yy",},"order":0,},
     {"id":{"name":"Sprite4","path":"sprites/Sprite4/Sprite4.yy",},"order":3,},
     {"id":{"name":"obj_demo","path":"objects/obj_demo/obj_demo.yy",},"order":2,},
     {"id":{"name":"obj_bounce","path":"objects/obj_bounce/obj_bounce.yy",},"order":0,},
@@ -45,6 +47,8 @@
     {"folderPath":"folders/Animation Curves.yy","order":12,"resourceVersion":"1.0","name":"Animation Curves","tags":[],"resourceType":"GMFolder",},
     {"folderPath":"folders/Notes.yy","order":13,"resourceVersion":"1.0","name":"Notes","tags":[],"resourceType":"GMFolder",},
     {"folderPath":"folders/Extensions.yy","order":14,"resourceVersion":"1.0","name":"Extensions","tags":[],"resourceType":"GMFolder",},
+    {"folderPath":"folders/Extensions/Loj Hadron Collider.yy","order":1,"resourceVersion":"1.0","name":"Loj Hadron Collider","tags":[],"resourceType":"GMFolder",},
+    {"folderPath":"folders/Extensions/Loj Hadron Collider/Internal.yy","order":1,"resourceVersion":"1.0","name":"Internal","tags":[],"resourceType":"GMFolder",},
   ],
   "AudioGroups": [
     {"targets":-1,"resourceVersion":"1.3","name":"audiogroup_default","resourceType":"GMAudioGroup",},
@@ -54,7 +58,7 @@
   ],
   "IncludedFiles": [],
   "MetaData": {
-    "IDEVersion": "2.3.4.577",
+    "IDEVersion": "2.3.4.580",
   },
   "resourceVersion": "1.4",
   "name": "LojHadronCollider",

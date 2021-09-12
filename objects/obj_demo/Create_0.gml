@@ -1,7 +1,5 @@
 ///
 
-show_debug_overlay(true);
-
 instSize = 0;
 
 inst[instSize] = obj_bounce;
