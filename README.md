@@ -3,6 +3,9 @@ A robust, pixel-perfect collision engine for GameMaker Studio 2.3.
 
 Need support? Want to ask a question about the extension in general, or just to pester the developer? Join the [Lojcord](https://discord.gg/HTedE6QMKY), or open an issue.
 
+## Documentation
+https://github.com/Lojemiru/Loj-Hadron-Collider/wiki
+
 ## Why build a custom collision engine?
 GameMaker's default collision events, while useful, are very barebones and lead to a large amount of boilerplate collision code - especially for pixel-perfect collisions. This usually results in projects having an odd mix of imprecise hit detection using built-in collision events and precise movement checks using `for` loops for solid collisions only. On top of that, additional checks are usually required to get the colliding side, colliding instance, etc. This all adds up to collision systems that are inconsistent, inefficient, inaccurate, and inflexible.
 
@@ -16,10 +19,6 @@ So how *do* you go about creating reasonably fast but precise collisions? My met
 In reality it's a *lot* more complicated than that, particularly thanks to the whole pixel-perfect setup requiring axis evaluation switching. Suffice it to say that it's not worth droning on about here; feel free to join the [Lojcord](https://discord.gg/HTedE6QMKY) if you want to hear me rant about it and/or want an explanation.
 
 Beyond that, it's mostly internal sorting and looping optimizations. `repeat(x)` is used everywhere possible rather than other loops for maximum performance. As a result, the LHC is YYC-optimized, assuming what I've been told about internal loop evaluation holds true.
-
-## Documentation
-
-To be written!
 
 ## Special thanks
 Martin Piecyk, for writing arguably the most famous GameMaker platforming engine that taught me the basics of pixel-perfect collision.
