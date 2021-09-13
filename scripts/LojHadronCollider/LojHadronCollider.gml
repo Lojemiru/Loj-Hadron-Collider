@@ -1,12 +1,21 @@
-#macro __LHC_VERSION "1.0.1"
+#macro __LHC_VERSION "v1.0.0"
+#macro __LHC_PREFIX "[Loj Hadron Collider]"
+#macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
+#macro __LHC_EVENT "__lhc_event_"
+#macro LHC_WRITELOGS false
 
-show_debug_message(@"
-///----------------------------------------------------------------------------------------------------------\\\
-     This project is using the Loj Hadron Collider v" + __LHC_VERSION + @", created by Lojemiru.
-	 The LHC is released under the MIT license; please ensure that you have
-	 reviewed and followed the terms of the license before releasing this project.
-\\\----------------------------------------------------------------------------------------------------------///
-");
+function __lhc_log(_msg) {
+	if (LHC_WRITELOGS) {
+		__lhc_log_force(_msg);
+	}
+}
+
+function __lhc_log_force(_msg) {
+	show_debug_message(__LHC_PREFIX + " " + _msg);
+}
+
+__lhc_log_force("Loading the Loj Hadron Collider " + __LHC_VERSION + " by Lojemiru...");
+__lhc_log_force("For assistance, please refer to " + __LHC_SOURCE);
 
 enum __lhc_CollisionDirection {
 	NONE,
@@ -23,21 +32,26 @@ enum __lhc_Axis {
 	LENGTH
 }
 
-global.__lhc_colRefX = [__lhc_CollisionDirection.LEFT, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.RIGHT];
-global.__lhc_colRefY = [__lhc_CollisionDirection.UP, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.DOWN];
-
 ///@func							lhc_init();
-///@desc							Initializes the LHC system for the calling instance.
+///@desc							Initializes global data structures for the LHC. Must be called before the LHC can be used.
 function lhc_init() {
+	global.__lhc_colRefX = [__lhc_CollisionDirection.LEFT, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.RIGHT];
+	global.__lhc_colRefY = [__lhc_CollisionDirection.UP, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.DOWN];
+	global.__lhc_interfaces = { };
+	__lhc_log_force("lhc_init() - Initialized.");
+}
+
+///@func							lhc_activate();
+///@desc							Activates the LHC system for the calling instance.
+function lhc_activate() {
 	__lhc_xVelSub = 0;
 	__lhc_yVelSub = 0;
 	__lhc_colliding = noone;
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
 	__lhc_continue = array_create(__lhc_Axis.LENGTH, true);
-	__lhc_objects = array_create(0);
-	__lhc_objLen = 0;
+	__lhc_interfaces = array_create(0);
+	__lhc_intLen = 0;
 	__lhc_list = ds_list_create();
-	// These two are used ONLY for behavior functions where we can't directly reference the input xVel/yVel
 	__lhc_axisVel = array_create(__lhc_Axis.LENGTH, 0);
 	__lhc_active = true;
 }
@@ -49,84 +63,153 @@ function lhc_cleanup() {
 	ds_list_destroy(__lhc_list);
 }
 
-///@func							lhc_add(object, function);
-///@desc							Add a collision event for the specified object.
-///@param object					The object to target.
-///@param function					The function to run on collision.
-function lhc_add(_object, _function) {
-    variable_instance_set(id, "__lhc_event_" + object_get_name(_object), _function);
-	__lhc_objects[__lhc_objLen++] = _object;
+///@func							lhc_create_interface(name, [functionName], [...]);
+///@desc							Creates an interface with the [optional] specified functions.
+///@param name						The name of the interface.
+///@param [function]				A function name to assign to the interface.
+///@param [...]						More function names to assign to the interface.
+function lhc_create_interface(_name) {
+	// Have to create the array first to set its individual slot values in a struct. Can't be lazy like in most other cases.
+	global.__lhc_interfaces[$ _name] = array_create(argument_count - 1);
+	
+	// Loop over arguments past name, set names in the global interface struct.
+	var i = 0;
+	repeat (argument_count - 1) {
+		global.__lhc_interfaces[$ _name][i] = argument[i + 1];
+		++i;
+	}
+	
+	//__lhc_log("lhc_create_interface() - Created interface " + _name + " with " + string(argument_count - 1) + " functions.");
 }
 
-///@func							lhc_remove(object);
-///@desc							Remove a collision event for the specified object.
-///@param object					The object to target.
-function lhc_remove(_object) {
-	if (!variable_instance_exists(id, "__lhc_event_" + object_get_name(_object))) {
+///@func							lhc_inherit_interface(interface);
+///@desc							Inherits the function headers of the given interface.
+///@param interface					The name of the interface to inherit from.
+function lhc_inherit_interface(_interface) {
+	// Loop over global interface struct for name value, set local variables of the index name to an empty function.
+	var i = 0;
+	repeat (array_length(global.__lhc_interfaces[$ _interface])) {
+		variable_instance_set(self, global.__lhc_interfaces[$ _interface][i], function() { });
+		++i;
+	}
+	
+	//__lhc_log("lhc_inherit_interface() - Inherited interface " + _interface + ".");
+}
+
+///@func							lhc_assign_interface(interface, object, [...]);
+///@desc							Assigns the input object[s] to the specified interface.
+///@param interface					The name of the interface to assign objects to.
+///@param object					An object to assign to the interface.
+///@param [...]						More objects to assign to the interface.
+function lhc_assign_interface(_interface) {
+	var i = 1;
+	repeat (argument_count - 1) {
+		// Set interface tag.
+		if (!asset_has_tags(argument[i], _interface, asset_object)) asset_add_tags(argument[i], _interface, asset_object);
+		++i;
+	}
+	
+	//__lhc_log("lhc_assign_interface() - assigned " + string(argument_count - 1) + " objects to interface " + _interface + ".");
+}
+
+///@func							lhc_add(interface, function);
+///@desc							Add a collision event for the specified interface.
+///@param interface					The interface to target.
+///@param function					The function to run on collision.
+function lhc_add(_interface, _function) {
+	variable_instance_set(id, __LHC_EVENT + _interface, _function);
+	__lhc_interfaces[__lhc_intLen++] = _interface;
+}
+
+///@func							lhc_remove(interface);
+///@desc							Remove a collision event with the specified interface.
+///@param interface					The interface to target.
+function lhc_remove(_interface) {
+	if (!variable_instance_exists(id, __LHC_EVENT + _interface)) {
 		throw "LojHadronCollider user error: attempted to remove a collision that has not previously been defined!";
 	}
 	
 	// Can't delete the method variable, so just set it to scream at us if it somehow gets referenced
-	variable_instance_set(id, "__lhc_event_" + object_get_name(_object), function() { throw "LojHadronCollider internal error: Attempted to reference a removed internal collision event." });
+	variable_instance_set(id, __LHC_EVENT + _interface, function() { throw "LojHadronCollider internal error: Attempted to reference a removed internal collision event." });
 	
-	var newObjects = array_create(0),
+	var newInterfaces = array_create(0),
 		i = 0,
 		j = 0;
 	
 	// Copy old array into new array, except for the object we're deleting
-	repeat (array_length(__lhc_objects)) {
-		if (__lhc_objects[i] != _object) {
-			newObjects[j] = __lhc_objects[i];
+	repeat (array_length(__lhc_interfaces)) {
+		if (__lhc_interfaces[i] != _interface) {
+			newInterfaces[j] = __lhc_interface[i];
 			j++;
 		}
 		i++;
 	}
 	
 	// Reset iterables
-	__lhc_objects = newObjects;
-	__lhc_objLen = array_length(__lhc_objects);
+	__lhc_interfaces = newInterfaces;
+	__lhc_intLen = array_length(__lhc_interfaces);
 }
 
-///@func							lhc_add(object, function);
-///@desc							Replaces the collision event for the specified object.
-///@param object					The object to target.
+///@func							lhc_add(interface, function);
+///@desc							Replaces the collision event with the specified interface.
+///@param interface					The interface to target.
 ///@param function					The function to run on collision.
-function lhc_replace(_object, _function) {
-	if (!variable_instance_exists(id, "__lhc_event_" + object_get_name(_object))) {
+function lhc_replace(_interface, _function) {
+	if (!variable_instance_exists(id, __LHC_EVENT + _interface)) {
 		throw "LojHadronCollider user error: attempted to replace a collision that has not previously been defined!";
 	}
-	variable_instance_set(id, "__lhc_event_" + object_get_name(_object), _function);
+	variable_instance_set(id, __LHC_EVENT + _interface, _function);
 }
 
-// Internal. Used to determine whether or not we need to run full pixel-by-pixel processing.
-function __lhc_collision_found() {
-	var j, i = 0;
-	// Iterate along collision list.
+// Internal. Used to reduce the output from collision_*_list functions for processing 
+function __lhc_reduce_collision_list() {
+	var hitInd = 0,
+		hitList = [],
+		i = 0,
+		j,
+		cancel,
+		objRef;
+	// Scan through list
 	repeat (ds_list_size(__lhc_list)) {
-		j = 0;
-		// Iterate along collision event list.
-		repeat (__lhc_objLen) {
-			// If we find ANY object that matches, immediately return true.
-			if (__lhc_list[| i].object_index == __lhc_objects[j] || object_is_ancestor(__lhc_list[| i].object_index, __lhc_objects[j])) {
-				return true;
+		objRef = __lhc_list[| i].object_index;
+		// If this object has any of our tags, add it to the list!
+		if (asset_has_any_tag(objRef, __lhc_interfaces, asset_object)) {
+			cancel = false;
+			j = 0;
+			// Fancy processing to ensure we're only adding an object to the list once. Wish it could be faster :/
+			repeat (hitInd) {
+				if (hitList[j] == objRef) {
+					cancel = true;
+					break;
+				}
+				++j;
 			}
-			++j;
+			if (!cancel) {
+				hitList[hitInd++] = objRef;
+			}
 		}
 		++i;
 	}
-	return false;
+	
+	return hitList;
 }
 
 // Internal. Used to check for collisions and run the appropriate function when found.
-function __lhc_check_substep(_axis, _xS, _yS) {
-	var col, i = 0;
+function __lhc_check_substep(_list, _len, _axis, _xS, _yS) {
+	var col, i = 0, j;
 	// Iterate along collision event list.
-	repeat (__lhc_objLen) {
-		col = instance_place(x + _xS * (_axis == __lhc_Axis.X), y + _yS * (_axis == __lhc_Axis.Y), __lhc_objects[i]);
+	repeat (_len) {
+		col = instance_place(x + _xS * (_axis == __lhc_Axis.X), y + _yS * (_axis == __lhc_Axis.Y), _list[i]);
 		// If we find one of our objects at the target position, set colliding instance ref, run function, and reset colliding instance ref.
 		if (col != noone) {
 			__lhc_colliding = col;
-			variable_instance_get(id, "__lhc_event_" + object_get_name(__lhc_objects[i]))();
+			j = 0;
+			repeat (__lhc_intLen) {
+				if (asset_has_tags(col.object_index, __lhc_interfaces[j], asset_object)) {
+					variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
+				}
+				++j;
+			}
 			__lhc_colliding = noone;
 		}
 		++i;
@@ -152,22 +235,27 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_axisVel[__lhc_Axis.Y] = round(__lhc_axisVel[__lhc_Axis.Y] - __lhc_yVelSub);
 	
 	// Store signs for quick reference
-	var s;
+	var s, list, check, len = 0;
 	s[__lhc_Axis.X] = sign(__lhc_axisVel[__lhc_Axis.X]);
 	s[__lhc_Axis.Y] = sign(__lhc_axisVel[__lhc_Axis.Y]);
 	
 	// Rectangle vs. line general collision checks, dump into the __lhc_list to check in __lhc_collision_found()
 	if (!_line) {
-		collision_rectangle_list(bbox_left + __lhc_axisVel[__lhc_Axis.X] * (1 - s[__lhc_Axis.X]) / 2, bbox_top + __lhc_axisVel[__lhc_Axis.Y] * (1 - s[__lhc_Axis.Y]) / 2, bbox_right + __lhc_axisVel[__lhc_Axis.X] * (1 + s[__lhc_Axis.X]) / 2, bbox_bottom + __lhc_axisVel[__lhc_Axis.Y] * (1 + s[__lhc_Axis.Y]) / 2, all, _prec, true, __lhc_list, false);
+		check = collision_rectangle_list(bbox_left + __lhc_axisVel[__lhc_Axis.X] * (1 - s[__lhc_Axis.X]) / 2, bbox_top + __lhc_axisVel[__lhc_Axis.Y] * (1 - s[__lhc_Axis.Y]) / 2, bbox_right + __lhc_axisVel[__lhc_Axis.X] * (1 + s[__lhc_Axis.X]) / 2, bbox_bottom + __lhc_axisVel[__lhc_Axis.Y] * (1 + s[__lhc_Axis.Y]) / 2, all, _prec, true, __lhc_list, false);
 	}
 	else {
 		var centerX = floor((bbox_right + bbox_left) / 2),
 			centerY = floor((bbox_bottom + bbox_top) / 2);
-		collision_line_list(centerX, centerY, centerX + __lhc_axisVel[__lhc_Axis.X], centerY + __lhc_axisVel[__lhc_Axis.Y], all, _prec, true, __lhc_list, false);
+		check = collision_line_list(centerX, centerY, centerX + __lhc_axisVel[__lhc_Axis.X], centerY + __lhc_axisVel[__lhc_Axis.Y], all, _prec, true, __lhc_list, false);
+	}
+	
+	if (check > 0) {
+		list = __lhc_reduce_collision_list();
+		len = array_length(list);
 	}
 	
 	// If we've found an instance in our event list...
-	if (__lhc_collision_found()) {
+	if (len > 0) {
 		var domMult, subMult,
 			// Copying to a var is faster than repeated global refs.
 			xRef = global.__lhc_colRefX,
@@ -190,7 +278,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 				__lhc_collisionDir = (domAxis == __lhc_Axis.X) ? xRef[s[__lhc_Axis.X] + 1] : yRef[s[__lhc_Axis.Y] + 1];
 				
 				// Check our next step.
-				__lhc_check_substep(domAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
+				__lhc_check_substep(list, len, domAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
 				
 				// Process position.
 				domMult = s[domAxis] * __lhc_continue[domAxis];
@@ -200,6 +288,8 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 					
 				// Determine whether or not the subordinate axis should process this loop.
 				subCurrentLast = subCurrent;
+				// Relative positioning nonsense - I don't remember what led me to this exactly but it has to do with point-slope line form.
+				// It works, and that's all I really need to know now.
 				subCurrent = floor((__lhc_axisVel[subAxis] * domCurrent) / __lhc_axisVel[domAxis]);
 				subIncrement = (subCurrent != subCurrentLast);
 				subCurrent = subCurrentLast; // This is VITAL. Prevents stupid slidey shenanigans!
@@ -212,7 +302,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 				__lhc_collisionDir = (subAxis == __lhc_Axis.X) ? xRef[s[__lhc_Axis.X] + 1] : yRef[s[__lhc_Axis.Y] + 1];
 				
 				// Check our next step.
-				__lhc_check_substep(subAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
+				__lhc_check_substep(list, len, subAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
 				
 				// Process position.
 				subMult = s[subAxis] * __lhc_continue[subAxis];
@@ -373,10 +463,10 @@ function lhc_behavior_push_horizontal() {
 		targX;
 	
 	if (lhc_collision_right()) {
-		targX = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_axisVel[__lhc_Axis.X];
+		targX = bbox_right + (col.x - col.bbox_left) + 1 + lhc_get_vel_x();
 	}
 	else {
-		targX = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_axisVel[__lhc_Axis.X];
+		targX = bbox_left - (col.bbox_right - col.x) - 1 + lhc_get_vel_x();
 	}
 	
 	with (col) {
@@ -393,10 +483,10 @@ function lhc_behavior_push_vertical() {
 		targY;
 	
 	if (lhc_collision_down()) {
-		targY = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_axisVel[__lhc_Axis.Y];
+		targY = bbox_bottom + (col.y - col.bbox_top) + 1 + lhc_get_vel_y();
 	}
 	else {
-		targY = bbox_top - (col.bbox_bottom - col.y) - 1 + __lhc_axisVel[__lhc_Axis.Y];
+		targY = bbox_top - (col.bbox_bottom - col.y) - 1 + lhc_get_vel_y();
 	}
 	
 	with (col) {
@@ -415,3 +505,5 @@ function lhc_behavior_stop_on_axis() {
 		lhc_stop_y();
 	}
 }
+
+__lhc_log_force("Loaded.");

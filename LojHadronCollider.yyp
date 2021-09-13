@@ -3,7 +3,8 @@
     {"id":{"name":"Sprite1","path":"sprites/Sprite1/Sprite1.yy",},"order":0,},
     {"id":{"name":"obj_line_bounce","path":"objects/obj_line_bounce/obj_line_bounce.yy",},"order":11,},
     {"id":{"name":"Sprite5","path":"sprites/Sprite5/Sprite5.yy",},"order":4,},
-    {"id":{"name":"LojHadronCollider","path":"scripts/LojHadronCollider/LojHadronCollider.yy",},"order":0,},
+    {"id":{"name":"LojHadronCollider","path":"scripts/LojHadronCollider/LojHadronCollider.yy",},"order":1,},
+    {"id":{"name":"scr_example_setup","path":"scripts/scr_example_setup/scr_example_setup.yy",},"order":0,},
     {"id":{"name":"Sprite4","path":"sprites/Sprite4/Sprite4.yy",},"order":3,},
     {"id":{"name":"obj_demo","path":"objects/obj_demo/obj_demo.yy",},"order":2,},
     {"id":{"name":"obj_bounce","path":"objects/obj_bounce/obj_bounce.yy",},"order":0,},
@@ -54,7 +55,7 @@
   ],
   "IncludedFiles": [],
   "MetaData": {
-    "IDEVersion": "2.3.4.577",
+    "IDEVersion": "2.3.4.580",
   },
   "resourceVersion": "1.4",
   "name": "LojHadronCollider",

@@ -1,4 +1,5 @@
 ///
+
 instSize = 0;
 
 inst[instSize] = obj_bounce;

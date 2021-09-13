@@ -4,7 +4,6 @@ glow = 0;
 col = c_navy;
 
 bounce = function() {
-	
 	// Stop further movement
 	lhc_stop();
 	
@@ -20,8 +19,6 @@ bounce = function() {
 	glow = 10;
 }
 
-lhc_init();
+lhc_activate();
 
-lhc_add(obj_solid, bounce);
-
-lhc_add(obj_bounce, bounce);
+lhc_add("ISolid", bounce);
