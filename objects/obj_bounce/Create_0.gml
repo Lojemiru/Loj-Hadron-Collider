@@ -4,7 +4,6 @@ glow = 0;
 col = c_navy;
 
 bounce = function() {
-	
 	// Stop further movement
 	lhc_stop();
 	
@@ -21,7 +20,5 @@ bounce = function() {
 }
 
 lhc_activate();
-
-lhc_inherit("ISolid");
 
 lhc_add("ISolid", bounce);

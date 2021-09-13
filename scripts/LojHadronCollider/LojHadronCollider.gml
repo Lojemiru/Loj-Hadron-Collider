@@ -2,6 +2,7 @@
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
+#macro LHC_WRITELOGS false
 
 function __lhc_log(_msg) {
 	if (LHC_WRITELOGS) {
@@ -31,11 +32,13 @@ enum __lhc_Axis {
 	LENGTH
 }
 
+///@func							lhc_init();
+///@desc							Initializes global data structures for the LHC. Must be called before the LHC can be used.
 function lhc_init() {
 	global.__lhc_colRefX = [__lhc_CollisionDirection.LEFT, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.RIGHT];
 	global.__lhc_colRefY = [__lhc_CollisionDirection.UP, __lhc_CollisionDirection.NONE, __lhc_CollisionDirection.DOWN];
 	global.__lhc_interfaces = { };
-	__lhc_log("Initialized.");
+	__lhc_log_force("lhc_init() - Initialized.");
 }
 
 ///@func							lhc_activate();
@@ -49,7 +52,6 @@ function lhc_activate() {
 	__lhc_interfaces = array_create(0);
 	__lhc_intLen = 0;
 	__lhc_list = ds_list_create();
-	// These two are used ONLY for behavior functions where we can't directly reference the input xVel/yVel
 	__lhc_axisVel = array_create(__lhc_Axis.LENGTH, 0);
 	__lhc_active = true;
 }
@@ -61,8 +63,11 @@ function lhc_cleanup() {
 	ds_list_destroy(__lhc_list);
 }
 
-///@func							lhc_create_interface(name, [functionName], [functionName2], [...]);
+///@func							lhc_create_interface(name, [functionName], [...]);
 ///@desc							Creates an interface with the [optional] specified functions.
+///@param name						The name of the interface.
+///@param [function]				A function name to assign to the interface.
+///@param [...]						More function names to assign to the interface.
 function lhc_create_interface(_name) {
 	// Have to create the array first to set its individual slot values in a struct. Can't be lazy like in most other cases.
 	global.__lhc_interfaces[$ _name] = array_create(argument_count - 1);
@@ -74,20 +79,37 @@ function lhc_create_interface(_name) {
 		++i;
 	}
 	
-	__lhc_log("Created interface " + _name + " with " + string(argument_count - 1) + " functions.");
+	//__lhc_log("lhc_create_interface() - Created interface " + _name + " with " + string(argument_count - 1) + " functions.");
 }
 
-///@func							lhc_inherit(interface);
-///@desc							Inherits the given interface.
-///@param interface					The name of the interface to inherit.
-function lhc_inherit(_interface) {
-	// Set interface tag.
-	if (!asset_has_tags(self.object_index, _interface, asset_object)) asset_add_tags(self.object_index, _interface, asset_object);
+///@func							lhc_inherit_interface(interface);
+///@desc							Inherits the function headers of the given interface.
+///@param interface					The name of the interface to inherit from.
+function lhc_inherit_interface(_interface) {
 	// Loop over global interface struct for name value, set local variables of the index name to an empty function.
 	var i = 0;
 	repeat (array_length(global.__lhc_interfaces[$ _interface])) {
 		variable_instance_set(self, global.__lhc_interfaces[$ _interface][i], function() { });
+		++i;
 	}
+	
+	//__lhc_log("lhc_inherit_interface() - Inherited interface " + _interface + ".");
+}
+
+///@func							lhc_assign_interface(interface, object, [...]);
+///@desc							Assigns the input object[s] to the specified interface.
+///@param interface					The name of the interface to assign objects to.
+///@param object					An object to assign to the interface.
+///@param [...]						More objects to assign to the interface.
+function lhc_assign_interface(_interface) {
+	var i = 1;
+	repeat (argument_count - 1) {
+		// Set interface tag.
+		if (!asset_has_tags(argument[i], _interface, asset_object)) asset_add_tags(argument[i], _interface, asset_object);
+		++i;
+	}
+	
+	//__lhc_log("lhc_assign_interface() - assigned " + string(argument_count - 1) + " objects to interface " + _interface + ".");
 }
 
 ///@func							lhc_add(interface, function);
@@ -100,7 +122,7 @@ function lhc_add(_interface, _function) {
 }
 
 ///@func							lhc_remove(interface);
-///@desc							Remove a collision event from the specified interface.
+///@desc							Remove a collision event with the specified interface.
 ///@param interface					The interface to target.
 function lhc_remove(_interface) {
 	if (!variable_instance_exists(id, __LHC_EVENT + _interface)) {
@@ -129,7 +151,7 @@ function lhc_remove(_interface) {
 }
 
 ///@func							lhc_add(interface, function);
-///@desc							Replaces the collision event for the specified object.
+///@desc							Replaces the collision event with the specified interface.
 ///@param interface					The interface to target.
 ///@param function					The function to run on collision.
 function lhc_replace(_interface, _function) {
@@ -149,13 +171,12 @@ function __lhc_reduce_collision_list() {
 		objRef;
 	// Scan through list
 	repeat (ds_list_size(__lhc_list)) {
-		// Scan through object targets
-		
 		objRef = __lhc_list[| i].object_index;
-		
+		// If this object has any of our tags, add it to the list!
 		if (asset_has_any_tag(objRef, __lhc_interfaces, asset_object)) {
 			cancel = false;
 			j = 0;
+			// Fancy processing to ensure we're only adding an object to the list once. Wish it could be faster :/
 			repeat (hitInd) {
 				if (hitList[j] == objRef) {
 					cancel = true;
@@ -214,22 +235,24 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_axisVel[__lhc_Axis.Y] = round(__lhc_axisVel[__lhc_Axis.Y] - __lhc_yVelSub);
 	
 	// Store signs for quick reference
-	var s, list, len;
+	var s, list, check, len = 0;
 	s[__lhc_Axis.X] = sign(__lhc_axisVel[__lhc_Axis.X]);
 	s[__lhc_Axis.Y] = sign(__lhc_axisVel[__lhc_Axis.Y]);
 	
 	// Rectangle vs. line general collision checks, dump into the __lhc_list to check in __lhc_collision_found()
 	if (!_line) {
-		collision_rectangle_list(bbox_left + __lhc_axisVel[__lhc_Axis.X] * (1 - s[__lhc_Axis.X]) / 2, bbox_top + __lhc_axisVel[__lhc_Axis.Y] * (1 - s[__lhc_Axis.Y]) / 2, bbox_right + __lhc_axisVel[__lhc_Axis.X] * (1 + s[__lhc_Axis.X]) / 2, bbox_bottom + __lhc_axisVel[__lhc_Axis.Y] * (1 + s[__lhc_Axis.Y]) / 2, all, _prec, true, __lhc_list, false);
+		check = collision_rectangle_list(bbox_left + __lhc_axisVel[__lhc_Axis.X] * (1 - s[__lhc_Axis.X]) / 2, bbox_top + __lhc_axisVel[__lhc_Axis.Y] * (1 - s[__lhc_Axis.Y]) / 2, bbox_right + __lhc_axisVel[__lhc_Axis.X] * (1 + s[__lhc_Axis.X]) / 2, bbox_bottom + __lhc_axisVel[__lhc_Axis.Y] * (1 + s[__lhc_Axis.Y]) / 2, all, _prec, true, __lhc_list, false);
 	}
 	else {
 		var centerX = floor((bbox_right + bbox_left) / 2),
 			centerY = floor((bbox_bottom + bbox_top) / 2);
-		collision_line_list(centerX, centerY, centerX + __lhc_axisVel[__lhc_Axis.X], centerY + __lhc_axisVel[__lhc_Axis.Y], all, _prec, true, __lhc_list, false);
+		check = collision_line_list(centerX, centerY, centerX + __lhc_axisVel[__lhc_Axis.X], centerY + __lhc_axisVel[__lhc_Axis.Y], all, _prec, true, __lhc_list, false);
 	}
 	
-	list = __lhc_reduce_collision_list();
-	len = array_length(list);
+	if (check > 0) {
+		list = __lhc_reduce_collision_list();
+		len = array_length(list);
+	}
 	
 	// If we've found an instance in our event list...
 	if (len > 0) {
@@ -440,10 +463,10 @@ function lhc_behavior_push_horizontal() {
 		targX;
 	
 	if (lhc_collision_right()) {
-		targX = bbox_right + (col.x - col.bbox_left) + 1 + __lhc_axisVel[__lhc_Axis.X];
+		targX = bbox_right + (col.x - col.bbox_left) + 1 + lhc_get_vel_x();
 	}
 	else {
-		targX = bbox_left - (col.bbox_right - col.x) - 1 + __lhc_axisVel[__lhc_Axis.X];
+		targX = bbox_left - (col.bbox_right - col.x) - 1 + lhc_get_vel_x();
 	}
 	
 	with (col) {
@@ -460,10 +483,10 @@ function lhc_behavior_push_vertical() {
 		targY;
 	
 	if (lhc_collision_down()) {
-		targY = bbox_bottom + (col.y - col.bbox_top) + 1 + __lhc_axisVel[__lhc_Axis.Y];
+		targY = bbox_bottom + (col.y - col.bbox_top) + 1 + lhc_get_vel_y();
 	}
 	else {
-		targY = bbox_top - (col.bbox_bottom - col.y) - 1 + __lhc_axisVel[__lhc_Axis.Y];
+		targY = bbox_top - (col.bbox_bottom - col.y) - 1 + lhc_get_vel_y();
 	}
 	
 	with (col) {

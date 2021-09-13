@@ -1,2 +1,0 @@
-///
-lhc_inherit("ISolid");
