@@ -216,6 +216,37 @@ function __lhc_check_substep(_list, _len, _axis, _xS, _yS) {
 	}
 }
 
+///@func							lhc_check_static();
+///@desc							Checks the calling instance's collision mask for collisions with Interfaces and runs the corresponding event if relevant.
+function lhc_check_static() {
+	var len = instance_place_list(x, y, all, __lhc_list, false);
+	
+	if (len > 0) {
+		// Directionless collision!
+		__lhc_collisionDir = __lhc_CollisionDirection.NONE;
+		
+		var i = 0, j, col;
+		col = __lhc_list[| i].object_index
+		repeat (len) {
+			if (asset_has_any_tag(col, __lhc_interfaces, asset_object)) {
+				__lhc_colliding = col;
+				j = 0;
+				repeat (__lhc_intLen) {
+					if (asset_has_tags(col.object_index, __lhc_interfaces[j], asset_object)) {
+						variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
+					}
+					++j;
+				}
+				__lhc_colliding = noone;
+			}
+			++i;
+		}
+	}
+	
+	// Prep list for next set of collision detections.
+	if (__lhc_active) ds_list_clear(__lhc_list);
+}
+
 ///@func							lhc_move(xVel, yVel, [line = false], [precise = false]);
 ///@desc							Moves the calling instance by the given xVel and yVel.
 ///@param xVel						The horizontal velocity to move by.
@@ -433,6 +464,12 @@ function lhc_collision_left() {
 ///@desc							Collision event-exclusive function. Returns whether or not the current collision is occuring on the top of this instance.
 function lhc_collision_up() {
 	return __lhc_collisionDir == __lhc_CollisionDirection.UP;
+}
+
+///@func							lhc_collision_static();
+///@desc							Collision event-exclusive function. Returns whether or not the current collision is occuring in the static check event.
+function lhc_collision_static() {
+	return __lhc_collisionDir == __lhc_CollisionDirection.NONE;
 }
 
 ///@func							lhc_collision_horizontal();
