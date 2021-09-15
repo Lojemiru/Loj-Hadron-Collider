@@ -217,16 +217,18 @@ function __lhc_check_substep(_list, _len, _axis, _xS, _yS) {
 }
 
 ///@func							lhc_check_static();
-///@desc							Checks the calling instance's collision mask for collisions with Interfaces and runs the corresponding event if relevant.
+///@desc							Checks the calling instance's collision mask for collisions with Interfaces and runs the corresponding event(s), if relevant.
 function lhc_check_static() {
-	var len = instance_place_list(x, y, all, __lhc_list, false);
+	if (!__lhc_active) return;
+	
+	var len = instance_place_list(floor(x), floor(y), all, __lhc_list, false);
 	
 	if (len > 0) {
 		// Directionless collision!
 		__lhc_collisionDir = __lhc_CollisionDirection.NONE;
 		
 		var i = 0, j, col;
-		col = __lhc_list[| i].object_index
+		col = __lhc_list[| i].object_index;
 		repeat (len) {
 			if (asset_has_any_tag(col, __lhc_interfaces, asset_object)) {
 				__lhc_colliding = col;
@@ -254,7 +256,8 @@ function lhc_check_static() {
 ///@param [line]					Whether or not to use a single raycast for the initial collision check. Fast, but only accurate for a single-pixel hitbox.
 ///@param [precise]					Whether or not to use precise hitboxes for the initial collision check.
 function lhc_move(_x, _y, _line = false, _prec = false) {
-	if (!__lhc_active || (_x == 0 && _y == 0)) return; // No need to process anything if we aren't moving.
+	// No need to process anything if we aren't moving.
+	if (!__lhc_active) return;
 	
 	// Subpixel buffering
 	__lhc_axisVel[__lhc_Axis.X] = _x + __lhc_xVelSub;
@@ -264,6 +267,12 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	// The rounding here is important! Keeps negative velocity values from misbehaving.
 	__lhc_axisVel[__lhc_Axis.X] = round(__lhc_axisVel[__lhc_Axis.X] - __lhc_xVelSub);
 	__lhc_axisVel[__lhc_Axis.Y] = round(__lhc_axisVel[__lhc_Axis.Y] - __lhc_yVelSub);
+	
+	// If we're not moving this step, do a static check and return.
+	if (__lhc_axisVel[__lhc_Axis.X] == 0 && __lhc_axisVel[__lhc_Axis.Y] == 0) {
+		lhc_check_static();
+		return;
+	}
 	
 	// Store signs for quick reference
 	var s, list, check, len = 0;

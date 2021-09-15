@@ -1,5 +1,6 @@
 {
   "resources": [
+    {"id":{"name":"obj_static_test","path":"objects/obj_static_test/obj_static_test.yy",},"order":12,},
     {"id":{"name":"Sprite1","path":"sprites/Sprite1/Sprite1.yy",},"order":0,},
     {"id":{"name":"obj_line_bounce","path":"objects/obj_line_bounce/obj_line_bounce.yy",},"order":11,},
     {"id":{"name":"Sprite5","path":"sprites/Sprite5/Sprite5.yy",},"order":4,},
