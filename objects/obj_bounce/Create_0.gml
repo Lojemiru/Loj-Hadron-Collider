@@ -11,7 +11,7 @@ bounce = function() {
 	if (lhc_collision_horizontal()) {
 		xVel *= -1;
 	}
-	else {
+	else if (lhc_collision_vertical()) {
 		yVel *= -1;
 	}
 	

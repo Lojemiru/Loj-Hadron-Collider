@@ -1,4 +1,4 @@
-#macro __LHC_VERSION "v1.0.0"
+#macro __LHC_VERSION "v1.1.0"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
@@ -161,59 +161,64 @@ function lhc_replace(_interface, _function) {
 	variable_instance_set(id, __LHC_EVENT + _interface, _function);
 }
 
-// Internal. Used to reduce the output from collision_*_list functions for processing 
-function __lhc_reduce_collision_list() {
-	var hitInd = 0,
-		hitList = [],
-		i = 0,
-		j,
-		cancel,
-		objRef;
-	// Scan through list
+// Internal. Used to check if we actually need to perform costly substep movement.
+function __lhc_collision_found() {
+	var objRef, i = 0;
 	repeat (ds_list_size(__lhc_list)) {
 		objRef = __lhc_list[| i].object_index;
-		// If this object has any of our tags, add it to the list!
+		// If this object has any of our tags, return true!
 		if (asset_has_any_tag(objRef, __lhc_interfaces, asset_object)) {
-			cancel = false;
-			j = 0;
-			// Fancy processing to ensure we're only adding an object to the list once. Wish it could be faster :/
-			repeat (hitInd) {
-				if (hitList[j] == objRef) {
-					cancel = true;
-					break;
-				}
-				++j;
-			}
-			if (!cancel) {
-				hitList[hitInd++] = objRef;
-			}
+			ds_list_clear(__lhc_list);
+			return true;
 		}
 		++i;
 	}
-	
-	return hitList;
+	ds_list_clear(__lhc_list);
+	return false;
+}
+
+// Internal. Used to call __lhc_check with the appropriate parameters for this substep.
+function __lhc_check_substep(_axis, _xS, _yS) {	
+	__lhc_check(x + _xS * (_axis == __lhc_Axis.X), y + _yS * (_axis == __lhc_Axis.Y));
 }
 
 // Internal. Used to check for collisions and run the appropriate function when found.
-function __lhc_check_substep(_list, _len, _axis, _xS, _yS) {
-	var col, i = 0, j;
-	// Iterate along collision event list.
-	repeat (_len) {
-		col = instance_place(x + _xS * (_axis == __lhc_Axis.X), y + _yS * (_axis == __lhc_Axis.Y), _list[i]);
-		// If we find one of our objects at the target position, set colliding instance ref, run function, and reset colliding instance ref.
-		if (col != noone) {
-			__lhc_colliding = col;
-			j = 0;
-			repeat (__lhc_intLen) {
-				if (asset_has_tags(col.object_index, __lhc_interfaces[j], asset_object)) {
-					variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
+function __lhc_check(_x, _y) {
+	if (!__lhc_active) return;
+	// Get collision list.
+	var len = instance_place_list(_x, _y, all, __lhc_list, false);
+	// If we're colliding with anything, iterate over the __lhc_list.
+	if (len > 0) {
+		var i = 0, j, col;
+		repeat (len) {
+			col = __lhc_list[| i].object_index;
+			// Check if it has ANY of our tags. If so...
+			if (asset_has_any_tag(col, __lhc_interfaces, asset_object)) {
+				__lhc_colliding = col;
+				j = 0;
+				// Scan through Interfaces and run relevant events.
+				repeat (__lhc_intLen) {
+					if (asset_has_tags(col.object_index, __lhc_interfaces[j], asset_object)) {
+						variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
+					}
+					++j;
 				}
-				++j;
+				__lhc_colliding = noone;
 			}
-			__lhc_colliding = noone;
+			++i;
 		}
-		++i;
 	}
+	
+	// Prep list for next set of collision detections.
+	if (__lhc_active) ds_list_clear(__lhc_list);
+}
+
+///@func							lhc_check_static();
+///@desc							Checks the calling instance's collision mask for collisions with Interfaces and runs the corresponding event(s), if relevant.
+function lhc_check_static() {
+	// Directionless collision!
+	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
+	__lhc_check(floor(x), floor(y));
 }
 
 ///@func							lhc_move(xVel, yVel, [line = false], [precise = false]);
@@ -223,7 +228,8 @@ function __lhc_check_substep(_list, _len, _axis, _xS, _yS) {
 ///@param [line]					Whether or not to use a single raycast for the initial collision check. Fast, but only accurate for a single-pixel hitbox.
 ///@param [precise]					Whether or not to use precise hitboxes for the initial collision check.
 function lhc_move(_x, _y, _line = false, _prec = false) {
-	if (!__lhc_active || (_x == 0 && _y == 0)) return; // No need to process anything if we aren't moving.
+	// No need to process anything if we aren't moving.
+	if (!__lhc_active) return;
 	
 	// Subpixel buffering
 	__lhc_axisVel[__lhc_Axis.X] = _x + __lhc_xVelSub;
@@ -234,8 +240,14 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_axisVel[__lhc_Axis.X] = round(__lhc_axisVel[__lhc_Axis.X] - __lhc_xVelSub);
 	__lhc_axisVel[__lhc_Axis.Y] = round(__lhc_axisVel[__lhc_Axis.Y] - __lhc_yVelSub);
 	
+	// If we're not moving this step, do a static check and return.
+	if (__lhc_axisVel[__lhc_Axis.X] == 0 && __lhc_axisVel[__lhc_Axis.Y] == 0) {
+		lhc_check_static();
+		return;
+	}
+	
 	// Store signs for quick reference
-	var s, list, check, len = 0;
+	var s, check;
 	s[__lhc_Axis.X] = sign(__lhc_axisVel[__lhc_Axis.X]);
 	s[__lhc_Axis.Y] = sign(__lhc_axisVel[__lhc_Axis.Y]);
 	
@@ -249,13 +261,8 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 		check = collision_line_list(centerX, centerY, centerX + __lhc_axisVel[__lhc_Axis.X], centerY + __lhc_axisVel[__lhc_Axis.Y], all, _prec, true, __lhc_list, false);
 	}
 	
-	if (check > 0) {
-		list = __lhc_reduce_collision_list();
-		len = array_length(list);
-	}
-	
 	// If we've found an instance in our event list...
-	if (len > 0) {
+	if (check > 0 && __lhc_collision_found()) {
 		var domMult, subMult,
 			// Copying to a var is faster than repeated global refs.
 			xRef = global.__lhc_colRefX,
@@ -278,7 +285,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 				__lhc_collisionDir = (domAxis == __lhc_Axis.X) ? xRef[s[__lhc_Axis.X] + 1] : yRef[s[__lhc_Axis.Y] + 1];
 				
 				// Check our next step.
-				__lhc_check_substep(list, len, domAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
+				__lhc_check_substep(domAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
 				
 				// Process position.
 				domMult = s[domAxis] * __lhc_continue[domAxis];
@@ -302,7 +309,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 				__lhc_collisionDir = (subAxis == __lhc_Axis.X) ? xRef[s[__lhc_Axis.X] + 1] : yRef[s[__lhc_Axis.Y] + 1];
 				
 				// Check our next step.
-				__lhc_check_substep(list, len, subAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
+				__lhc_check_substep(subAxis, s[__lhc_Axis.X], s[__lhc_Axis.Y]);
 				
 				// Process position.
 				subMult = s[subAxis] * __lhc_continue[subAxis];
@@ -322,9 +329,6 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 		x += __lhc_axisVel[__lhc_Axis.X];
 		y += __lhc_axisVel[__lhc_Axis.Y];
 	}
-	
-	// Prep list for next set of collision detections.
-	if (__lhc_active) ds_list_clear(__lhc_list);
 	
 	// Reset general collision step parameters.
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
@@ -433,6 +437,12 @@ function lhc_collision_left() {
 ///@desc							Collision event-exclusive function. Returns whether or not the current collision is occuring on the top of this instance.
 function lhc_collision_up() {
 	return __lhc_collisionDir == __lhc_CollisionDirection.UP;
+}
+
+///@func							lhc_collision_static();
+///@desc							Collision event-exclusive function. Returns whether or not the current collision is occuring in the static check event.
+function lhc_collision_static() {
+	return __lhc_collisionDir == __lhc_CollisionDirection.NONE;
 }
 
 ///@func							lhc_collision_horizontal();
