@@ -1,4 +1,4 @@
-#macro __LHC_VERSION "v1.0.0"
+#macro __LHC_VERSION "v1.1.0"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
