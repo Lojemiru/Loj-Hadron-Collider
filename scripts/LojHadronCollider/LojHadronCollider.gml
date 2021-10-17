@@ -1,4 +1,4 @@
-#macro __LHC_VERSION "v1.1.2"
+#macro __LHC_VERSION "v1.2.0"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
@@ -52,6 +52,7 @@ function lhc_activate() {
 	__lhc_interfaces = array_create(0);
 	__lhc_intLen = 0;
 	__lhc_list = ds_list_create();
+	__lhc_meetingList = ds_list_create();
 	__lhc_axisVel = array_create(__lhc_Axis.LENGTH, 0);
 	__lhc_active = true;
 }
@@ -61,6 +62,7 @@ function lhc_activate() {
 function lhc_cleanup() {
 	__lhc_active = false;
 	ds_list_destroy(__lhc_list);
+	ds_list_destroy(__lhc_meetingList);
 }
 
 ///@func							lhc_create_interface(name, [functionName], [...]);
@@ -141,7 +143,7 @@ function lhc_remove(_interface) {
 	// Copy old array into new array, except for the object we're deleting
 	repeat (array_length(__lhc_interfaces)) {
 		if (__lhc_interfaces[i] != _interface) {
-			newInterfaces[j] = __lhc_interface[i];
+			newInterfaces[j] = __lhc_interfaces[i];
 			j++;
 		}
 		i++;
@@ -163,19 +165,107 @@ function lhc_replace(_interface, _function) {
 	variable_instance_set(id, __LHC_EVENT + _interface, _function);
 }
 
+
+///@func							lhc_place_meeting(x, y, interface);
+///@desc							Interface-based place_meeting().
+///@param x							The x position to check for interfaces.
+///@param y							The y position to check for interfaces.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+function lhc_place_meeting(_x, _y, _interface) {
+	instance_place_list(_x, _y, all, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_position_meeting(x, y, interface);
+///@desc							Interface-based position_meeting().
+///@param x							The x position to check for interfaces.
+///@param y							The y position to check for interfaces.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+function lhc_position_meeting(_x, _y, _interface) {
+	instance_position_list(_x, _y, all, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_collision_circle(x, y, rad, interface, [prec] = false, [notme] = true);
+///@desc							Interface-based collision_circle().
+///@param x							The x coordinate of the center of the circle to check.
+///@param y							The y coordinate of the center of the circle to check.
+///@param rad						The radius (distance in pixels from its center to its edge).
+///@param interface					The interface (or array of interfaces) to check for collisions.
+///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
+///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
+function lhc_collision_circle(_x, _y, _r, _interface, _prec = false, _notme = true) {
+	collision_circle_list(_x, _y, _r, all, _prec, _notme, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_collision_ellipse(x1, y1, x2, y2, interface, [prec] = false, [notme] = true);
+///@desc							Interface-based collision_ellipse().
+///@param x1						The x coordinate of the left side of the ellipse to check.
+///@param y1						The y coordinate of the top side of the ellipse to check.
+///@param x2						The x coordinate of the right side of the ellipse to check.
+///@param y2						The y coordinate of the bottom side of the ellipse to check.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
+///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
+function lhc_collision_ellipse(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	collision_ellipse_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_collision_line(x1, y1, x2, y2, interface, [prec] = false, [notme] = true);
+///@desc							Interface-based collision_line().
+///@param x1						The x coordinate of the start of the line.
+///@param y1						The y coordinate of the start of the line.
+///@param x2						The x coordinate of the end of the line.
+///@param y2						The y coordinate of the end of the line.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
+///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
+function lhc_collision_line(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	collision_line_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_collision_point(x, y, interface, [prec] = false, [notme] = true);
+///@desc							Interface-based collision_point().
+///@param x							The x coordinate of the point to check.
+///@param y							The y coordinate of the point to check.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
+///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
+function lhc_collision_point(_x, _y, _interface, _prec = false, _notme = true) {
+	collision_point_list(_x, _y, all, _prec, _notme, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
+///@func							lhc_collision_rectangle(x1, y1, x2, y2, interface, [prec] = false, [notme] = true);
+///@desc							Interface-based collision_rectangle().
+///@param x1						The x coordinate of the left side of the rectangle to check.
+///@param y1						The y coordinate of the top side of the rectangle to check.
+///@param x2						The x coordinate of the right side of the rectangle to check.
+///@param y2						The y coordinate of the bottom side of the rectangle to check.
+///@param interface					The interface (or array of interfaces) to check for collisions.
+///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
+///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
+function lhc_collision_rectangle(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	collision_rectangle_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
+	return __lhc_collision_found(__lhc_meetingList, _interface);
+}
+
 // Internal. Used to check if we actually need to perform costly substep movement.
-function __lhc_collision_found() {
+function __lhc_collision_found(_list, _interface = __lhc_interfaces) {
 	var objRef, i = 0;
-	repeat (ds_list_size(__lhc_list)) {
-		objRef = __lhc_list[| i].object_index;
+	repeat (ds_list_size(_list)) {
+		objRef = _list[| i].object_index;
 		// If this object has any of our tags, return true!
-		if (asset_has_any_tag(objRef, __lhc_interfaces, asset_object)) {
-			ds_list_clear(__lhc_list);
+		if (asset_has_any_tag(objRef, _interface, asset_object)) {
+			ds_list_clear(_list);
 			return true;
 		}
 		++i;
 	}
-	ds_list_clear(__lhc_list);
+	ds_list_clear(_list);
 	return false;
 }
 
@@ -265,7 +355,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	}
 	
 	// If we've found an instance in our event list...
-	if (check > 0 && __lhc_collision_found()) {
+	if (check > 0 && __lhc_collision_found(__lhc_list)) {
 		var domMult, subMult,
 			// Copying to a var is faster than repeated global refs.
 			xRef = global.__lhc_colRefX,
@@ -337,8 +427,6 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	__lhc_collisionDir = __lhc_CollisionDirection.NONE;
 	__lhc_continue[__lhc_Axis.X] = true;
 	__lhc_continue[__lhc_Axis.Y] = true;
-	__lhc_axisVel[__lhc_Axis.X] = 0;
-	__lhc_axisVel[__lhc_Axis.Y] = 0;
 }
 
 ///@func							lhc_colliding();
