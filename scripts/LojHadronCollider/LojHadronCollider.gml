@@ -1,7 +1,8 @@
-#macro __LHC_VERSION "v1.2.1"
+#macro __LHC_VERSION "v1.3.0"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
+#macro __LHC_EVENT_PRE __LHC_EVENT + "pre_"
 #macro LHC_WRITELOGS false
 
 function __lhc_log(_msg) {
@@ -51,10 +52,14 @@ function lhc_activate() {
 	__lhc_continue = array_create(__lhc_Axis.LENGTH, true);
 	__lhc_interfaces = array_create(0);
 	__lhc_intLen = 0;
+	__lhc_preInterfaces = array_create(0);
+	__lhc_preIntLen = 0;
 	__lhc_list = ds_list_create();
 	__lhc_meetingList = ds_list_create();
 	__lhc_axisVel = array_create(__lhc_Axis.LENGTH, 0);
 	__lhc_active = true;
+	__lhc_startX = x;
+	__lhc_startY = y;
 }
 
 ///@func							lhc_cleanup();
@@ -125,6 +130,15 @@ function lhc_add(_interface, _function) {
 	__lhc_interfaces[__lhc_intLen++] = _interface;
 }
 
+///@func							lhc_add_pre(interface, function);
+///@desc							Add a pre-collision event for the specified interface. Primarily useful for slope implementations.
+///@param interface					The interface to target.
+///@param function					The function to run on collision.
+function lhc_add_pre(_interface, _function) {
+	variable_instance_set(id, __LHC_EVENT_PRE + _interface, _function);
+	__lhc_preInterfaces[__lhc_preIntLen++] = _interface;
+}
+
 ///@func							lhc_remove(interface);
 ///@desc							Remove a collision event with the specified interface.
 ///@param interface					The interface to target.
@@ -154,8 +168,37 @@ function lhc_remove(_interface) {
 	__lhc_intLen = array_length(__lhc_interfaces);
 }
 
-///@func							lhc_add(interface, function);
-///@desc							Replaces the collision event with the specified interface.
+///@func							lhc_remove_pre(interface);
+///@desc							Remove a pre-collision event with the specified interface.
+///@param interface					The interface to target.
+function lhc_remove_pre(_interface) {
+	if (!variable_instance_exists(id, __LHC_EVENT_PRE + _interface)) {
+		throw "LojHadronCollider user error: attempted to remove a pre-collision that has not previously been defined!";
+	}
+	
+	// Can't delete the method variable, so just set it to scream at us if it somehow gets referenced
+	variable_instance_set(id, __LHC_EVENT_PRE + _interface, function() { throw "LojHadronCollider internal error: Attempted to reference a removed internal pre-collision event." });
+	
+	var newInterfaces = array_create(0),
+		i = 0,
+		j = 0;
+	
+	// Copy old array into new array, except for the object we're deleting
+	repeat (array_length(__lhc_preInterfaces)) {
+		if (__lhc_preInterfaces[i] != _interface) {
+			newInterfaces[j] = __lhc_preInterfaces[i];
+			j++;
+		}
+		i++;
+	}
+	
+	// Reset iterables
+	__lhc_preInterfaces = newInterfaces;
+	__lhc_preIntLen = array_length(__lhc_preInterfaces);
+}
+
+///@func							lhc_replace(interface, function);
+///@desc							Replaces the specified collision event with the specified interface.
 ///@param interface					The interface to target.
 ///@param function					The function to run on collision.
 function lhc_replace(_interface, _function) {
@@ -163,6 +206,17 @@ function lhc_replace(_interface, _function) {
 		throw "LojHadronCollider user error: attempted to replace a collision that has not previously been defined!";
 	}
 	variable_instance_set(id, __LHC_EVENT + _interface, _function);
+}
+
+///@func							lhc_replace_pre(interface, function);
+///@desc							Replaces the specified pre-collision event with the specified interface.
+///@param interface					The interface to target.
+///@param function					The function to run on collision.
+function lhc_replace_pre(_interface, _function) {
+	if (!variable_instance_exists(id, __LHC_EVENT_PRE + _interface)) {
+		throw "LojHadronCollider user error: attempted to replace a pre-collision that has not previously been defined!";
+	}
+	variable_instance_set(id, __LHC_EVENT_PRE + _interface, _function);
 }
 
 
@@ -270,7 +324,7 @@ function __lhc_collision_found(_list, _interface = __lhc_interfaces) {
 }
 
 // Internal. Used to call __lhc_check with the appropriate parameters for this substep.
-function __lhc_check_substep(_axis, _xS, _yS) {	
+function __lhc_check_substep(_axis, _xS, _yS) {
 	__lhc_check(x + _xS * (_axis == __lhc_Axis.X), y + _yS * (_axis == __lhc_Axis.Y));
 }
 
@@ -279,6 +333,41 @@ function __lhc_check(_x, _y) {
 	if (!__lhc_active) return;
 	// Get collision list.
 	var len = instance_place_list(_x, _y, all, __lhc_list, false);
+	
+	if (__lhc_preIntLen > 0) {
+		var _startX = x,
+			_startY = y;
+		
+		// If we're colliding with anything, iterate over the __lhc_list.
+		if (len > 0) {
+			var i = 0, j, col;
+			repeat (len) {
+				if (!__lhc_active) return; // Emergency exit if we ran cleanup during a prior iteration
+				col = __lhc_list[| i];
+				// Check if it has ANY of our tags. If so...
+				if (asset_has_any_tag(col.object_index, __lhc_preInterfaces, asset_object)) {
+					__lhc_colliding = col;
+					j = 0;
+					// Scan through Interfaces and run relevant events.
+					repeat (__lhc_preIntLen) {
+						if (asset_has_any_tag(col.object_index, __lhc_preInterfaces[j], asset_object)) {
+							variable_instance_get(id, __LHC_EVENT_PRE + __lhc_preInterfaces[j])();
+						}
+						++j;
+					}
+					__lhc_colliding = noone;
+				}
+				++i;
+			}
+		}
+		
+		if (_startX != x || _startY != y) {
+			// Prep list for next set of collision detections.
+			if (__lhc_active) ds_list_clear(__lhc_list);
+			len = instance_place_list(_x + (x - _startX), _y + (y - _startY), all, __lhc_list, false);
+		}
+	}
+	
 	// If we're colliding with anything, iterate over the __lhc_list.
 	if (len > 0) {
 		var i = 0, j, col;
@@ -293,6 +382,38 @@ function __lhc_check(_x, _y) {
 				repeat (__lhc_intLen) {
 					if (asset_has_any_tag(col.object_index, __lhc_interfaces[j], asset_object)) {
 						variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
+					}
+					++j;
+				}
+				__lhc_colliding = noone;
+			}
+			++i;
+		}
+	}
+	
+	// Prep list for next set of collision detections.
+	if (__lhc_active) ds_list_clear(__lhc_list);
+}
+
+// Internal. Used to check for pre-collisions and run the appropriate function when found.
+function __lhc_check_pre(_x, _y) {
+	if (!__lhc_active) return;
+	// Get collision list.
+	var len = instance_place_list(_x, _y, all, __lhc_list, false);
+	// If we're colliding with anything, iterate over the __lhc_list.
+	if (len > 0) {
+		var i = 0, j, col;
+		repeat (len) {
+			if (!__lhc_active) return; // Emergency exit if we ran cleanup during a prior iteration
+			col = __lhc_list[| i];
+			// Check if it has ANY of our tags. If so...
+			if (asset_has_any_tag(col.object_index, __lhc_preInterfaces, asset_object)) {
+				__lhc_colliding = col;
+				j = 0;
+				// Scan through Interfaces and run relevant events.
+				repeat (__lhc_preIntLen) {
+					if (asset_has_any_tag(col.object_index, __lhc_preInterfaces[j], asset_object)) {
+						variable_instance_get(id, __LHC_EVENT_PRE + __lhc_preInterfaces[j])();
 					}
 					++j;
 				}
@@ -324,7 +445,11 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 	// No need to process anything if we aren't moving.
 	if (!__lhc_active) return;
 	
-	// Subpixel buffering
+	// Store startX/startY values.
+	__lhc_startX = x;
+	__lhc_startY = y;
+	
+	// Subpixel buffering.
 	__lhc_axisVel[__lhc_Axis.X] = _x + __lhc_xVelSub;
 	__lhc_axisVel[__lhc_Axis.Y] = _y + __lhc_yVelSub;
 	__lhc_xVelSub = frac(__lhc_axisVel[__lhc_Axis.X]);
@@ -339,7 +464,7 @@ function lhc_move(_x, _y, _line = false, _prec = false) {
 		return;
 	}
 	
-	// Store signs for quick reference
+	// Store signs for quick reference.
 	var s, check;
 	s[__lhc_Axis.X] = sign(__lhc_axisVel[__lhc_Axis.X]);
 	s[__lhc_Axis.Y] = sign(__lhc_axisVel[__lhc_Axis.Y]);
@@ -464,6 +589,18 @@ function lhc_get_vel_x() {
 ///@desc							Collision event-exclusive function. Returns the integer-rounded y-axis velocity for this movement step.
 function lhc_get_vel_y() {
 	return __lhc_axisVel[__lhc_Axis.Y];
+}
+
+///@func							lhc_get_moved_x();
+///@desc							Collision event-exclusive function. Returns how many pixels on the x-axis have been moved through since the start of this movement step.
+function lhc_get_moved_x() {
+	return x - __lhc_startX;
+}
+
+///@func							lhc_get_moved_y();
+///@desc							Collision event-exclusive function. Returns how many pixels on the y-axis have been moved through since the start of this movement step.
+function lhc_get_moved_y() {
+	return y - __lhc_startY;
 }
 
 ///@func							lhc_get_offset_x();

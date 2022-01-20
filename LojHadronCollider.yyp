@@ -3,6 +3,7 @@
     {"id":{"name":"obj_static_test","path":"objects/obj_static_test/obj_static_test.yy",},"order":12,},
     {"id":{"name":"Sprite1","path":"sprites/Sprite1/Sprite1.yy",},"order":0,},
     {"id":{"name":"obj_line_bounce","path":"objects/obj_line_bounce/obj_line_bounce.yy",},"order":11,},
+    {"id":{"name":"oTest","path":"objects/oTest/oTest.yy",},"order":13,},
     {"id":{"name":"Sprite5","path":"sprites/Sprite5/Sprite5.yy",},"order":4,},
     {"id":{"name":"LojHadronCollider","path":"scripts/LojHadronCollider/LojHadronCollider.yy",},"order":1,},
     {"id":{"name":"scr_example_setup","path":"scripts/scr_example_setup/scr_example_setup.yy",},"order":0,},
