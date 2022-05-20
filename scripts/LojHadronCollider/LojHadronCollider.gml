@@ -1,7 +1,8 @@
-#macro __LHC_VERSION "v1.2.1"
+#macro __LHC_VERSION "v1.2.2"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
+#macro __LHC_VALIDATE if (!__lhc_active) return false
 #macro LHC_WRITELOGS false
 
 function __lhc_log(_msg) {
@@ -61,8 +62,20 @@ function lhc_activate() {
 ///@desc							Cleanup event - MUST BE RUN TO PREVENT MEMORY LEAKS.
 function lhc_cleanup() {
 	__lhc_active = false;
-	ds_list_destroy(__lhc_list);
-	ds_list_destroy(__lhc_meetingList);
+	
+	try {
+		ds_list_destroy(__lhc_list);
+	}
+	catch(e) {
+		__lhc_log("Error in lhc_cleanup(): __lhc_list does not exist. Was an instance destroyed before it could run lhc_activate()? This is probably not a problem.");
+	}
+	
+	try {
+		ds_list_destroy(__lhc_meetingList);
+	}
+	catch(e) {
+		__lhc_log("Error in lhc_cleanup(): __lhc_meetingList does not exist. Was an instance destroyed before it could run lhc_activate()? This is probably not a problem.");
+	}
 }
 
 ///@func							lhc_create_interface(name, [functionName], [...]);
@@ -172,6 +185,7 @@ function lhc_replace(_interface, _function) {
 ///@param y							The y position to check for interfaces.
 ///@param interface					The interface (or array of interfaces) to check for collisions.
 function lhc_place_meeting(_x, _y, _interface) {
+	__LHC_VALIDATE;
 	instance_place_list(_x, _y, all, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -182,6 +196,7 @@ function lhc_place_meeting(_x, _y, _interface) {
 ///@param y							The y position to check for interfaces.
 ///@param interface					The interface (or array of interfaces) to check for collisions.
 function lhc_position_meeting(_x, _y, _interface) {
+	__LHC_VALIDATE;
 	instance_position_list(_x, _y, all, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -195,6 +210,7 @@ function lhc_position_meeting(_x, _y, _interface) {
 ///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
 ///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
 function lhc_collision_circle(_x, _y, _r, _interface, _prec = false, _notme = true) {
+	__LHC_VALIDATE;
 	collision_circle_list(_x, _y, _r, all, _prec, _notme, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -209,6 +225,7 @@ function lhc_collision_circle(_x, _y, _r, _interface, _prec = false, _notme = tr
 ///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
 ///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
 function lhc_collision_ellipse(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	__LHC_VALIDATE;
 	collision_ellipse_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -223,6 +240,7 @@ function lhc_collision_ellipse(_x1, _y1, _x2, _y2, _interface, _prec = false, _n
 ///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
 ///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
 function lhc_collision_line(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	__LHC_VALIDATE;
 	collision_line_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -235,6 +253,7 @@ function lhc_collision_line(_x1, _y1, _x2, _y2, _interface, _prec = false, _notm
 ///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
 ///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
 function lhc_collision_point(_x, _y, _interface, _prec = false, _notme = true) {
+	__LHC_VALIDATE;
 	collision_point_list(_x, _y, all, _prec, _notme, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
@@ -249,6 +268,7 @@ function lhc_collision_point(_x, _y, _interface, _prec = false, _notme = true) {
 ///@param [prec]					Whether the check is based on precise collisions (true, which is slower) or its bounding box in general (false, faster). Defaults to false.
 ///@param [notme]					Whether the calling instance, if relevant, should be excluded (true) or not (false). Defaults to true.
 function lhc_collision_rectangle(_x1, _y1, _x2, _y2, _interface, _prec = false, _notme = true) {
+	__LHC_VALIDATE;
 	collision_rectangle_list(_x1, _y1, _x2, _y2, all, _prec, _notme, __lhc_meetingList, false);
 	return __lhc_collision_found(__lhc_meetingList, _interface);
 }
