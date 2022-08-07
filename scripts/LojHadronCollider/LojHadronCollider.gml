@@ -1,4 +1,4 @@
-#macro __LHC_VERSION "v1.2.2"
+#macro __LHC_VERSION "v1.2.3"
 #macro __LHC_PREFIX "[Loj Hadron Collider]"
 #macro __LHC_SOURCE "https://github.com/Lojemiru/Loj-Hadron-Collider"
 #macro __LHC_EVENT "__lhc_event_"
@@ -311,6 +311,7 @@ function __lhc_check(_x, _y) {
 				j = 0;
 				// Scan through Interfaces and run relevant events.
 				repeat (__lhc_intLen) {
+					if (!__lhc_active) return; // Emergency exit if we ran cleanup during a prior iteration
 					if (asset_has_any_tag(col.object_index, __lhc_interfaces[j], asset_object)) {
 						variable_instance_get(id, __LHC_EVENT + __lhc_interfaces[j])();
 					}
