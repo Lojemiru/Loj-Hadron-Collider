@@ -1,3 +1,9 @@
+# Deprecation
+
+I am moving on from GameMaker in general. I will provide support for this library as best possible if people still express interest in it, but I will not be actively using it and will be unlikely to add new features to the LHC.
+
+Pull requests and issues will still be addressed, but you may get better long-term mileage with a fork.
+
 # Loj Hadron Collider
 A robust, pixel-perfect collision engine for GameMaker Studio 2.3.
 
